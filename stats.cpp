@@ -7,185 +7,236 @@
 stats::stats(PNG & im){
 
 /* your code here */
-    initSumHueX(im);
-    initSumHueY(im);
-    initSumSat(im);
-    initSumLum(im);
-    initHist(im);
+   // initSumHueX(im);
+    //initSumHueY(im);
+    //initSumSat(im);
+    //initSumLum(im);
+    //initHist(im);
+    initStat(im);
 
 }
 
-void stats::initSumHueX(PNG & im){
-    //temp table contains individual HueX value of each Pixels
-    vector< vector<double>> oneHueXTable;
-    int cc=0;
+void stats::initStat(PNG & im){
+    int width= (int)im.width();
+    int height= (int)im.height();
 
-    //put HueX into each element of oneHueXTable column by column
-    for(unsigned int i=0; i<im.width();i++){
-        vector<double> column;
-        for(unsigned int j=0; j<im.height();j++){
-            column.push_back(cos(im.getPixel(i,j)->h*PI/180));
-        }
-        oneHueXTable.push_back(column);
-    }
-    //transfer from HueX table to sumHueX table
-    for(unsigned int i=0;i<im.width();i++){
-        //cc++;
-        //cout<<cc<<endl;
-        //cout<<"im.width= "<<im.width()<<endl;
-        vector<double> column;
+    //set the size of sumHueX, sumHueY, sumSat, sumLum, hist to the size of image
+    sumHueX.resize(width,vector<double>(height));
+    sumHueY.resize(width,vector<double>(height));
+    sumSat.resize(width,vector<double>(height));
+    sumLum.resize(width,vector<double>(height));
+    hist.resize(width,vector<vector<int>>(height,vector<int>(36)));
+    //set sumHueX, sumHueY, sumSat, sumLum, hist
+    for(int j=0; j<height;j++){
+        for(int i=0; i<width;i++){
+            //set sumHueX
+            double leftHueX= ((i-1)>=0)?sumHueX[i-1][j]:0;
+            double topHueX= (j-1>=0) ? ((i-1>=0)?(sumHueX[i][j-1]-sumHueX[i-1][j-1]):(sumHueX[i][j-1])) : 0;
+            sumHueX[i][j]=(cos(im.getPixel(i,j)->h*PI/180))+leftHueX+topHueX;
 
-        for(unsigned int j=0; j<im.height();j++){
+            //set sumHueY
+            double leftHueY= ((i-1)>=0)?sumHueY[i-1][j]:0;
+            double topHueY= (j-1>=0) ? ((i-1>=0)?(sumHueY[i][j-1]-sumHueY[i-1][j-1]):(sumHueY[i][j-1])) : 0;
+            sumHueY[i][j]=(sin(im.getPixel(i,j)->h*PI/180))+leftHueY+topHueY;
 
-            double element=0;
-            for(unsigned int x=0;x<=i;x++){
-                for(unsigned int y=0; y<=j;y++){
-                    element+=oneHueXTable[x][y];
-                }
+            //set SumSat
+            double leftSat= ((i-1)>=0)?sumSat[i-1][j]:0;
+            double topSat= (j-1>=0) ? ((i-1>=0)?(sumSat[i][j-1]-sumSat[i-1][j-1]):(sumSat[i][j-1])) : 0;
+            sumSat[i][j]=(im.getPixel(i,j)->s)+leftSat+topSat;
+
+            //set SumLum
+            double leftLum= ((i-1)>=0)?sumLum[i-1][j]:0;
+            double topLum= (j-1>=0) ? ((i-1>=0)?(sumLum[i][j-1]-sumLum[i-1][j-1]):(sumLum[i][j-1])) : 0;
+            sumLum[i][j]=(im.getPixel(i,j)->l)+leftLum+topLum;
+
+            //set hist
+            vector<int> leftHist=((i-1)>=0)?hist[i-1][j]:vector<int>(36,0);
+            vector<int> topTotalHist=(j-1>=0)?hist[i][j-1]:vector<int>(36,0);
+            vector<int> topLeftHist=(i-1>=0 && j-1>=0)?hist[i-1][j-1]:vector<int>(36,0);
+            //add itself's hue into it's histogram
+            hist[i][j][im.getPixel(i,j)->h/10]++;
+            //iteration to add previous data into current one's histogram
+            for(int k=0;k<36;k++){
+                hist[i][j][k]+=leftHist[k];
+                hist[i][j][k]+=topTotalHist[k];
+                hist[i][j][k]-=topLeftHist[k];
             }
-            column.push_back(element);
+            
         }
-
-        sumHueX.push_back(column);     
-
-    }
-
-
-}
-
-void stats::initSumHueY(PNG & im){
-    int cc=0;
-    //temp table contains individual HueY value of each Pixels
-    vector< vector<double>> oneHueYTable;
-
-    //put HueY into each element of oneHueYTable column by column
-    for(unsigned int i=0; i<im.width();i++){
-        vector<double> column;
-        for(unsigned int j=0; j<im.height();j++){
-            column.push_back(sin(im.getPixel(i,j)->h*PI/180));
-        }
-        oneHueYTable.push_back(column);
-    }
-
-    //transfer from HueY table to sumHueY table
-    for(unsigned int i=0;i<im.width();i++){
-        //cc++;
-        //cout<<cc<<endl;
-        //cout<<"Y-im.width= "<<im.width()<<endl;
-
-        vector<double> column;
-
-        for(unsigned int j=0; j<im.height();j++){
-
-            double element=0;
-            for(unsigned int x=0;x<=i;x++){
-                for(unsigned int y=0; y<=j;y++){
-                    element+=oneHueYTable[x][y];
-                }
-            }
-            column.push_back(element);
-        }
-
-        sumHueY.push_back(column);     
-
-    }
-
-
-}
-
-void stats::initSumSat(PNG & im){
-    //cout<<"initSumSat"<<endl;
-    //temp table contains individual Saturation value of each Pixels
-    vector< vector<double>> oneSatTable;
-
-    //put Sat into each element of oneSatTable column by column
-    for(unsigned int i=0; i<im.width();i++){
-        vector<double> column;
-        for(unsigned int j=0; j<im.height();j++){
-            column.push_back(im.getPixel(i,j)->s);
-        }
-        oneSatTable.push_back(column);
-    }
-
-    //transfer from Sat table to sumSat table
-    for(unsigned int i=0;i<im.width();i++){
-
-        vector<double> column;
-
-        for(unsigned int j=0; j<im.height();j++){
-
-            double element=0;
-            for(unsigned int x=0;x<=i;x++){
-                for(unsigned int y=0; y<=j;y++){
-                    element+=oneSatTable[x][y];
-                }
-            }
-            column.push_back(element);
-        }
-
-        sumSat.push_back(column);     
-
-    }
-
-
-}
-
-void stats::initSumLum(PNG & im){
-    //cout<<"initSumLum"<<endl;
-    //temp table contains individual luminance value of each Pixels
-    vector< vector<double>> oneLumTable;
-
-    //put Lum into each element of oneLumTable column by column
-    for(unsigned int i=0; i<im.width();i++){
-        vector<double> column;
-        for(unsigned int j=0; j<im.height();j++){
-            column.push_back(im.getPixel(i,j)->l);
-        }
-        oneLumTable.push_back(column);
-    }
-
-    //transfer from Sat table to sumSat table
-    for(unsigned int i=0;i<im.width();i++){
-
-        vector<double> column;
-
-        for(unsigned int j=0; j<im.height();j++){
-
-            double element=0;
-            for(unsigned int x=0;x<=i;x++){
-                for(unsigned int y=0; y<=j;y++){
-                    element+=oneLumTable[x][y];
-                }
-            }
-            column.push_back(element);
-        }
-
-        sumLum.push_back(column);     
-
-    }
-
-
-}
-
-void stats::initHist(PNG & im){
-    //cout<<"initHist"<<endl;
-    for(unsigned int i=0;i<im.width();i++){
-        vector<vector<int>> col;
-        for(unsigned int j=0; j<im.height();j++){
-            //one pixel's histgram
-            vector<int> bins(36,0);
-            for(unsigned int x=0; x<=i;x++){
-                for(unsigned int y=0;y<=j;y++){
-                    int hue= im.getPixel(x,y)->h;
-                    int index=hue/10;
-                    bins[index]++;
-                }
-            }
-            col.push_back(bins);
-        }
-        hist.push_back(col);
     }
 }
+
+// void stats::initSumHueX(PNG & im){
+//     //temp table contains individual HueX value of each Pixels
+//     vector< vector<double>> oneHueXTable;
+//     int cc=0;
+
+//     //put HueX into each element of oneHueXTable column by column
+//     for(unsigned int i=0; i<im.width();i++){
+//         vector<double> column;
+//         for(unsigned int j=0; j<im.height();j++){
+//             column.push_back(cos(im.getPixel(i,j)->h*PI/180));
+//         }
+//         oneHueXTable.push_back(column);
+//     }
+//     //transfer from HueX table to sumHueX table
+//     for(unsigned int i=0;i<im.width();i++){
+//         //cc++;
+//         //cout<<cc<<endl;
+//         //cout<<"im.width= "<<im.width()<<endl;
+//         vector<double> column;
+
+//         for(unsigned int j=0; j<im.height();j++){
+
+//             double element=0;
+//             for(unsigned int x=0;x<=i;x++){
+//                 for(unsigned int y=0; y<=j;y++){
+//                     element+=oneHueXTable[x][y];
+//                 }
+//             }
+//             column.push_back(element);
+//         }
+
+//         sumHueX.push_back(column);     
+
+//     }
+
+
+// }
+
+// void stats::initSumHueY(PNG & im){
+//     int cc=0;
+//     //temp table contains individual HueY value of each Pixels
+//     vector< vector<double>> oneHueYTable;
+
+//     //put HueY into each element of oneHueYTable column by column
+//     for(unsigned int i=0; i<im.width();i++){
+//         vector<double> column;
+//         for(unsigned int j=0; j<im.height();j++){
+//             column.push_back(sin(im.getPixel(i,j)->h*PI/180));
+//         }
+//         oneHueYTable.push_back(column);
+//     }
+
+//     //transfer from HueY table to sumHueY table
+//     for(unsigned int i=0;i<im.width();i++){
+//         //cc++;
+//         //cout<<cc<<endl;
+//         //cout<<"Y-im.width= "<<im.width()<<endl;
+
+//         vector<double> column;
+
+//         for(unsigned int j=0; j<im.height();j++){
+
+//             double element=0;
+//             for(unsigned int x=0;x<=i;x++){
+//                 for(unsigned int y=0; y<=j;y++){
+//                     element+=oneHueYTable[x][y];
+//                 }
+//             }
+//             column.push_back(element);
+//         }
+
+//         sumHueY.push_back(column);     
+
+//     }
+
+
+// }
+
+// void stats::initSumSat(PNG & im){
+//     //cout<<"initSumSat"<<endl;
+//     //temp table contains individual Saturation value of each Pixels
+//     vector< vector<double>> oneSatTable;
+
+//     //put Sat into each element of oneSatTable column by column
+//     for(unsigned int i=0; i<im.width();i++){
+//         vector<double> column;
+//         for(unsigned int j=0; j<im.height();j++){
+//             column.push_back(im.getPixel(i,j)->s);
+//         }
+//         oneSatTable.push_back(column);
+//     }
+
+//     //transfer from Sat table to sumSat table
+//     for(unsigned int i=0;i<im.width();i++){
+
+//         vector<double> column;
+
+//         for(unsigned int j=0; j<im.height();j++){
+
+//             double element=0;
+//             for(unsigned int x=0;x<=i;x++){
+//                 for(unsigned int y=0; y<=j;y++){
+//                     element+=oneSatTable[x][y];
+//                 }
+//             }
+//             column.push_back(element);
+//         }
+
+//         sumSat.push_back(column);     
+
+//     }
+
+
+// }
+
+// void stats::initSumLum(PNG & im){
+//     //cout<<"initSumLum"<<endl;
+//     //temp table contains individual luminance value of each Pixels
+//     vector< vector<double>> oneLumTable;
+
+//     //put Lum into each element of oneLumTable column by column
+//     for(unsigned int i=0; i<im.width();i++){
+//         vector<double> column;
+//         for(unsigned int j=0; j<im.height();j++){
+//             column.push_back(im.getPixel(i,j)->l);
+//         }
+//         oneLumTable.push_back(column);
+//     }
+
+//     //transfer from Sat table to sumSat table
+//     for(unsigned int i=0;i<im.width();i++){
+
+//         vector<double> column;
+
+//         for(unsigned int j=0; j<im.height();j++){
+
+//             double element=0;
+//             for(unsigned int x=0;x<=i;x++){
+//                 for(unsigned int y=0; y<=j;y++){
+//                     element+=oneLumTable[x][y];
+//                 }
+//             }
+//             column.push_back(element);
+//         }
+
+//         sumLum.push_back(column);     
+
+//     }
+
+
+// }
+
+// void stats::initHist(PNG & im){
+//     //cout<<"initHist"<<endl;
+//     for(unsigned int i=0;i<im.width();i++){
+//         vector<vector<int>> col;
+//         for(unsigned int j=0; j<im.height();j++){
+//             //one pixel's histgram
+//             vector<int> bins(36,0);
+//             for(unsigned int x=0; x<=i;x++){
+//                 for(unsigned int y=0;y<=j;y++){
+//                     int hue= im.getPixel(x,y)->h;
+//                     int index=hue/10;
+//                     bins[index]++;
+//                 }
+//             }
+//             col.push_back(bins);
+//         }
+//         hist.push_back(col);
+//     }
+// }
 
 long stats::rectArea(pair<int,int> ul, pair<int,int> lr){
 

@@ -33,6 +33,7 @@ public:
     void initSumSat(PNG & im);
     void initSumLum(PNG & im);
     void initHist(PNG & im);
+    void initStat(PNG & im);
     double getAvgSat(pair<int,int> ul, pair<int,int> lr);
     double getAvgLum(pair<int,int> ul, pair<int,int> lr);
     double getAvgHueX(pair<int,int> ul, pair<int,int> lr);

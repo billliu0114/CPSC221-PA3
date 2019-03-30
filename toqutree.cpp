@@ -38,8 +38,17 @@ toqutree::toqutree(PNG & imIn, int k){
 	/* that imIn is large enough to contain an image of that size. */
 
 	/* your code here */
-	PNG * imPtr= &imIn;
-	root=buildTree(imPtr, k);
+	int size=2;
+	for(int i=1; i<k;i++){
+		size=size*2;
+	}
+	PNG sub_image(size,size);
+	for(int i=0;i<size;i++){
+		for(int j=0;j<size;j++){
+			*(sub_image.getPixel(i,j))=*(imIn.getPixel(i,j));
+		}
+	}
+	root=buildTree(&sub_image, size);
 }
 
 
@@ -206,16 +215,16 @@ PNG toqutree::render(){
 	// quadtree, instead.
 
 	/* your code here */
-	int dim= root->dimension;
-	PNG result(dim,dim);
+	// int dim= root->dimension;
+	// PNG result(dim,dim);
 
-	for(int i=0; i<dim; i++){
-		for(int j=0; j<dim; j++){
-			*(result.getPixel(i,j))=findPixel(root,i,j);
-		}
-	}
+	// for(int i=0; i<dim; i++){
+	// 	for(int j=0; j<dim; j++){
+	// 		*(result.getPixel(i,j))=findPixel(root,i,j);
+	// 	}
+	// }
 
-	return result;
+	return realRender(root);
 }
 
 HSLAPixel toqutree::findPixel(Node * node, int x, int y){
@@ -223,10 +232,10 @@ HSLAPixel toqutree::findPixel(Node * node, int x, int y){
 	int py= node->center.second;
 	int K= node->dimension;
 	int L= K/2;
-	cout<<K<<endl;
-	cout<<"x: "<<x;
-	cout<<" y: "<<y<<endl;
-	cout<<"center "<<px<<" "<<py<<endl;
+	// cout<<K<<endl;
+	// cout<<"x: "<<x;
+	// cout<<" y: "<<y<<endl;
+	// cout<<"center "<<px<<" "<<py<<endl;
 	if(K==2){
 		//return SE's color
 		if(x==1 && y==1){
@@ -293,8 +302,45 @@ HSLAPixel toqutree::findPixel(Node * node, int x, int y){
 		}
 	}
 
-
+	throw "Nothing found!";
 	
+}
+
+PNG toqutree::realRender(Node* node){
+
+	if(node->SE==NULL||node->SW==NULL||node->NE==NULL||node->NW==NULL){
+		int K= node->dimension;
+		PNG Pic(K,K);
+		for(int i=0;i<K;i++){
+			for(int j=0;j<K;j++){
+				*(Pic.getPixel(i,j))=node->avg;
+			}
+		}
+		return Pic;
+	}
+	
+	PNG PicSE=realRender(node->SE);
+	PNG PicSW=realRender(node->SW);
+	PNG PicNE=realRender(node->NE);
+	PNG PicNW=realRender(node->NW);
+
+	int cx= node->center.first;
+	int cy= node->center.second;
+	int K= node->dimension;
+	int L= K/2;
+
+	PNG result(K,K);
+
+	for(int i=0; i<L; i++){
+		for(int j=0;j<L;j++){
+			*(result.getPixel((cx+i)%K,(cy+j)%K))=*(PicSE.getPixel(i,j));
+			*(result.getPixel((cx+i)%K,((cy+L)%K+j)%K))=*(PicNE.getPixel(i,j));
+			*(result.getPixel(((cx+L)%K+i)%K,(cy+j)%K))=*(PicSW.getPixel(i,j));
+			*(result.getPixel(((cx+L)%K+i)%K,((cy+L)%K+j)%K))=*(PicNW.getPixel(i,j));
+		}
+	}
+	return result;
+
 }
 
 /* oops, i left the implementation of this one in the file! */

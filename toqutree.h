@@ -198,6 +198,7 @@ private:
    void dividePic(PNG* PicPart, PNG* original, pair<int,int>one);
    
    HSLAPixel findPixel(Node* node, int x, int y);
+   PNG realRender(Node* node);
 
 };
 
