@@ -16,9 +16,13 @@ stats::stats(PNG & im){
 
 }
 
+
+
+
 void stats::initStat(PNG & im){
     int width= (int)im.width();
     int height= (int)im.height();
+    im_width=width;
 
     //set the size of sumHueX, sumHueY, sumSat, sumLum, hist to the size of image
     sumHueX.resize(width,vector<double>(height));
@@ -241,7 +245,13 @@ void stats::initStat(PNG & im){
 long stats::rectArea(pair<int,int> ul, pair<int,int> lr){
 
     /* your code here */
-    return (lr.first-ul.first+1)*(lr.second-ul.second+1);
+    //normal
+    if(ul.first<=lr.first && ul.second<=lr.second){
+        return (lr.first-ul.first+1)*(lr.second-ul.second+1);
+    }
+    else{
+        return (im_width/2)*(im_width/2);
+    }
 
 }
 
@@ -306,6 +316,70 @@ double stats::getAvgHueY(pair<int,int> ul, pair<int,int> lr){
 vector<int> stats::buildHist(pair<int,int> ul, pair<int,int> lr){
 
     /* your code here */
+    //normal split
+    if(ul.first<=lr.first && ul.second<=lr.second){
+        return buildBlock(ul,lr);
+    }
+    
+    //vertical split
+    else if(ul.first<=lr.first && ul.second>=lr.second){
+        int L= lr.first-ul.first+1;
+        int K=2*L;
+        pair<int, int> botlr= pair<int,int>(lr.first,K-1);
+        vector<int> bottom= buildBlock(ul, botlr);
+
+        pair<int,int> topul= pair<int,int>(ul.first,0);
+        vector<int> top= buildBlock(topul,lr);
+
+        for(int i=0; i<36; i++){
+            top[i]=top[i]+bottom[i];
+        }
+        return top;
+    }
+
+    //horizontal split
+    else if(ul.first>=lr.first && ul.second<=lr.second){
+        int L= lr.second-ul.second+1;
+        int K=2*L;
+        pair<int, int> rightlr= pair<int,int>(K-1,lr.second);
+        vector<int> right= buildBlock(ul, rightlr);
+
+        pair<int,int> leftul= pair<int,int>(0,ul.second);
+        vector<int> left= buildBlock(leftul,lr);
+
+        for(int i=0; i<36; i++){
+            left[i]=left[i]+right[i];
+        }
+        return left;
+    }
+    //everywhere split
+    else{
+        int K=im_width;
+        int L=K/2;
+        pair<int,int>SElr=pair<int,int>(K-1,K-1);
+        vector<int> SE= buildBlock(ul, SElr);
+
+        pair<int,int>NWul=pair<int,int>(0,0);
+        vector<int> NW= buildBlock(NWul, lr);
+
+        pair<int,int>SWlr=pair<int,int>(lr.first,K-1);
+        pair<int,int>SWul=pair<int,int>(0,ul.second);
+        vector<int> SW= buildBlock(SWul, SWlr);
+
+        pair<int,int>NEul=pair<int,int>(ul.first,0);
+        pair<int,int>NElr=pair<int,int>(K-1,lr.second);
+        vector<int> NE= buildBlock(NEul, NElr);
+
+        for(int i=0; i<36; i++){
+            SE[i]=NW[i]+SW[i]+NE[i]+SE[i];
+        }
+        return SE;
+    }
+
+}
+
+vector<int> stats::buildBlock(pair<int,int> ul, pair<int,int> lr){
+    
     vector<int> big= hist[lr.first][lr.second];
     //big-top
     if(ul.second!=0){
@@ -322,12 +396,12 @@ vector<int> stats::buildHist(pair<int,int> ul, pair<int,int> lr){
     //big+add
     if((ul.first!=0)&&(ul.second!=0)){
         for (int i = 0; i< 36; i++){
-            big[i] += hist[ul.first-1][ul.second-1][i];
+             big[i] += hist[ul.first-1][ul.second-1][i];
         }
     }
 
     return big;
-
+    
 }
 
 // takes a distribution and returns entropy

@@ -27,6 +27,7 @@ public:
     *   the number of pixels whose hue value h, is: k*10 <= h < (k+1)*10. 
     */
     vector<vector<vector<int>>> hist;
+    int im_width;
     
     void initSumHueX(PNG & im);
     void initSumHueY(PNG & im);
@@ -38,6 +39,7 @@ public:
     double getAvgLum(pair<int,int> ul, pair<int,int> lr);
     double getAvgHueX(pair<int,int> ul, pair<int,int> lr);
     double getAvgHueY(pair<int,int> ul, pair<int,int> lr);
+    vector<int> buildBlock(pair<int,int> ul, pair<int,int> lr);
 
 
 //public:
@@ -51,6 +53,7 @@ public:
     // the cumulative sums for X and Y separately, and then combine
     // them when we are doing color difference computation.
 	stats(PNG & im); 
+    
 
 	// given a rectangle, return the average color value over the rect.
 	/* Each color component of the pixel is the average value of that 

@@ -78,17 +78,20 @@ TEST_CASE("toqutree::basic ctor render","[weight=1][part=toqutree]"){
     REQUIRE(out==img);
 }
 
-// TEST_CASE("toqutree::basic copy","[weight=1][part=toqutree]"){
-//     PNG img;
-//     img.readFromFile("images/geo.png");
+TEST_CASE("toqutree::basic copy","[weight=1][part=toqutree]"){
+    PNG img;
+    img.readFromFile("images/canadaPlace.png");
 
-//     toqutree t1(img,5);
-//     toqutree t1copy(t1);
+    toqutree t1(img,8);
+    toqutree t1copy(t1);
 
-//     PNG out = t1copy.render();
+    PNG out = t1copy.render();
+    PNG t1out= t1.render();
 
-//     REQUIRE(out==img);
-// }
+    out.writeToFile("images/out-canadaPlace.png");
+
+    REQUIRE(t1out==out);
+}
 
 // TEST_CASE("toqutree::basic prune","[weight=1][part=toqutree]"){
 //     PNG img;
@@ -102,6 +105,25 @@ TEST_CASE("toqutree::basic ctor render","[weight=1][part=toqutree]"){
 //     PNG expected; expected.readFromFile("images/adaPrune.05.png");
 //     result.convert();
 
+//     result.writeToFile("images/out-ada.png");
+
 //     REQUIRE(expected==result);
+// }
+
+// TEST_CASE("toqutree::basic prune","[weight=1][part=toqutree]"){
+//     PNG img;
+//     img.readFromFile("images/yanis.png");
+//     cout<<img.width();
+//     toqutree t1(img,9);
+
+//     t1.prune(0.01);
+//     PNG result = t1.render();
+
+//     //PNG expected; expected.readFromFile("images/adaPrune.05.png");
+//     //result.convert();
+
+//     result.writeToFile("images/out-yanis.png");
+
+    
 // }
 

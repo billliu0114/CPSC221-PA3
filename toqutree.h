@@ -193,12 +193,17 @@ private:
 
    int sizeHelper(Node * root);
    pair<int,int> getPivotPoint(int k);
-   pair<int,int> getCtr(pair<int,int> pivot, int searchBound, stats*, int k);
-   double getAvgEntropy(int x, int y, int k, stats* stat);
+   pair<int,int> getCtr(pair<int,int> pivot, int searchBound, stats*, int k, PNG* image);
+   double getAvgEntropy(int x, int y, int k, stats* stat, PNG* image);
    void dividePic(PNG* PicPart, PNG* original, pair<int,int>one);
    
    HSLAPixel findPixel(Node* node, int x, int y);
    PNG realRender(Node* node);
+   void prune(Node* sub, double tol);
+   bool checkPrune(Node* ancestor, Node* sub, double tol);
+   void realPrune(Node* sub);
+   void realClear(Node * & curr);
+   Node* realCopy(const Node * other);
 
 };
 

@@ -39,8 +39,12 @@ toqutree::toqutree(PNG & imIn, int k){
 
 	/* your code here */
 	int size=2;
-	for(int i=1; i<k;i++){
-		size=size*2;
+	if(k==0)
+		size=1;
+	else{
+		for(int i=1; i<k;i++){
+			size=size*2;
+		}
 	}
 	PNG sub_image(size,size);
 	for(int i=0;i<size;i++){
@@ -72,12 +76,17 @@ toqutree::Node * toqutree::buildTree(PNG * im, int k) {
 	// declare a dynamically allocated stats object, and free it
 	// once you've used it to choose a split point, and calculate
 	// an average.
+	if(k==1){
+		HSLAPixel avg= *(im->getPixel(0,0));
+		Node* curr= new Node(pair<int,int>(0,0), 1, avg);
+		return curr;
+	}
 
 	if(k==2){
 		stats* stat= new stats(*im);
 		HSLAPixel avg= stat->getAvg(pair<int,int>(0,0),pair<int,int>(1,1));
 		Node* curr= new Node(pair<int,int>(1,1), 2, avg);
-		free(stat);
+		delete stat;
 		curr->SE= new Node(pair<int,int>(0,0),1,*(im->getPixel(1,1)));
 		curr->SW= new Node(pair<int,int>(0,0),1,*(im->getPixel(0,1)));
 		curr->NE= new Node(pair<int,int>(0,0),1,*(im->getPixel(1,0)));
@@ -94,7 +103,7 @@ toqutree::Node * toqutree::buildTree(PNG * im, int k) {
 	stats* stat= new stats(*im);
 	//cout<<"After init"<<endl;
 
-	pair<int,int> center=getCtr(pivot, searchBound, stat, k);
+	pair<int,int> center=getCtr(pivot, searchBound, stat, k, im);
 	int x=center.first;
 	int y=center.second;
 	//pair<int,int> SE2= pair<int,int>((x+L-1)%k,(y+L-1)%k);
@@ -129,11 +138,11 @@ toqutree::Node * toqutree::buildTree(PNG * im, int k) {
 	curr->NE=buildTree(PicNE, k/2);
 	curr->NW=buildTree(PicNW, k/2);
 
-	free(PicSE);
-	free(PicSW);
-	free(PicNE);
-	free(PicNW);
-	free(stat);
+	delete PicSE;
+	delete PicSW;
+	delete PicNE;
+	delete PicNW;
+	delete stat;
 
 
 	return curr;
@@ -149,29 +158,46 @@ void toqutree::dividePic(PNG* PicPart, PNG* original, pair<int,int>one){
 	}
 }
 
-pair<int,int>toqutree::getCtr(pair<int,int> pivot, int searchBound, stats* stat, int k){
-	double entropy=getAvgEntropy(pivot.first,pivot.second,k,stat);
+pair<int,int>toqutree::getCtr(pair<int,int> pivot, int searchBound, stats* stat, int k, PNG* image){
+
+	pair<int, int> result= pair<int,int> (pivot.first,pivot.second);
+	double entropy=getAvgEntropy(pivot.first,pivot.second,k,stat, image);
 
 	for(int i=pivot.first; i<(pivot.first+searchBound);i++){
 		for(int j=pivot.second;j<(pivot.second+searchBound);j++){
-			double temp= getAvgEntropy(i,j,k,stat);
-			entropy= (entropy>temp)?temp:entropy;
+			double temp= getAvgEntropy(i,j,k,stat, image);
+			// entropy= (entropy>temp)?temp:entropy;
+			if(temp<entropy){
+				entropy=temp;
+				//result=pair<int,int>(i,j);
+			}
 		}
 	}
+	//return result;
 	//now we have the min Entropy
-	for(int i=pivot.first; i<(pivot.first+searchBound);i++){
-		for(int j=pivot.second;j<(pivot.second+searchBound);j++){
-			double temp= getAvgEntropy(i,j,k,stat);
+	// for(int i=pivot.first; i<(pivot.first+searchBound);i++){
+	// 	for(int j=pivot.second;j<(pivot.second+searchBound);j++){
+	// 		double temp= getAvgEntropy(i,j,k,stat, image);
+	// 		if(entropy==temp){
+	// 			result= pair<int,int>(i,j);
+	// 		}
+	// 	}
+	// }
+	for(int j=pivot.second; j<(pivot.second+searchBound);j++){
+		for(int i=pivot.first;i<(pivot.first+searchBound);i++){
+			double temp= getAvgEntropy(i,j,k,stat,image);
 			if(entropy==temp){
 				return pair<int,int>(i,j);
 			}
 		}
 	}
-	throw exception();
+	
+	
 
 }
 
-double toqutree::getAvgEntropy(int x, int y, int k, stats* stat){
+double toqutree::getAvgEntropy(int x, int y, int k, stats* stat, PNG* image){
+
 	int L= k/2;
 	pair<int,int> SE1= pair<int,int>(x,y);
 	pair<int,int> SE2= pair<int,int>((x+L-1)%k,(y+L-1)%k);
@@ -215,94 +241,85 @@ PNG toqutree::render(){
 	// quadtree, instead.
 
 	/* your code here */
-	// int dim= root->dimension;
-	// PNG result(dim,dim);
-
-	// for(int i=0; i<dim; i++){
-	// 	for(int j=0; j<dim; j++){
-	// 		*(result.getPixel(i,j))=findPixel(root,i,j);
-	// 	}
-	// }
-
 	return realRender(root);
 }
 
 HSLAPixel toqutree::findPixel(Node * node, int x, int y){
-	int px= node->center.first;
-	int py= node->center.second;
-	int K= node->dimension;
-	int L= K/2;
-	// cout<<K<<endl;
-	// cout<<"x: "<<x;
-	// cout<<" y: "<<y<<endl;
-	// cout<<"center "<<px<<" "<<py<<endl;
-	if(K==2){
-		//return SE's color
-		if(x==1 && y==1){
-			return node->SE->avg;
-		}
-		//return NE's color
-		else if(x==1 && y==0){
-			return node->NE->avg;
-		}
-		//return SW's color
-		else if(x==0 && y==1){
-			return node->SW->avg;
-		}
-		//return NW's color
-		else{
-			return node->NW->avg;
-		}
-	}
+	// 	int px= node->center.first;
+	// 	int py= node->center.second;
+	// 	int K= node->dimension;
+	// 	int L= K/2;
+	// 	// cout<<K<<endl;
+	// 	// cout<<"x: "<<x;
+	// 	// cout<<" y: "<<y<<endl;
+	// 	// cout<<"center "<<px<<" "<<py<<endl;
+	// 	if(K==2){
+	// 		//return SE's color
+	// 		if(x==1 && y==1){
+	// 			return node->SE->avg;
+	// 		}
+	// 		//return NE's color
+	// 		else if(x==1 && y==0){
+	// 			return node->NE->avg;
+	// 		}
+	// 		//return SW's color
+	// 		else if(x==0 && y==1){
+	// 			return node->SW->avg;
+	// 		}
+	// 		//return NW's color
+	// 		else{
+	// 			return node->NW->avg;
+	// 		}
+	// 	}
 
-	//search in SE and NE
-	for(int i=0; i<L;i++){
-		//traverse X
-		if((px+i)%K==x){
-			//in SE?
-			for(int j=0;j<L;j++){
-				//traverse Y
-				if((py+j)%K==y){
-					//in SE
-					return findPixel(node->SE,i,j);
-				}
-			}
-			//in NE then...
-			for(int j=0;j<L;j++){
-				//traverse Y
-				if(((py+L)%K+j)%K==y){
-					//in NE
-					return findPixel(node->NE,i,j);
-				}
-			}
+	// 	//search in SE and NE
+	// 	for(int i=0; i<L;i++){
+	// 		//traverse X
+	// 		if((px+i)%K==x){
+	// 			//in SE?
+	// 			for(int j=0;j<L;j++){
+	// 				//traverse Y
+	// 				if((py+j)%K==y){
+	// 					//in SE
+	// 					return findPixel(node->SE,i,j);
+	// 				}
+	// 			}
+	// 			//in NE then...
+	// 			for(int j=0;j<L;j++){
+	// 				//traverse Y
+	// 				if(((py+L)%K+j)%K==y){
+	// 					//in NE
+	// 					return findPixel(node->NE,i,j);
+	// 				}
+	// 			}
 
-		}
-	}
-	//not in SE or NE, search in SW and NW
-	for(int i=0; i<L;i++){
-		//traverse X
-		if(((px+L)%K+i)%K==x){
-			//in SW?
-			for(int j=0;j<L;j++){
-				//traverse Y
-				if((py+j)%K==y){
-					//in SW
-					return findPixel(node->SW,i,j);
-				}
-			}
-			//in NW then...
-			for(int j=0;j<L;j++){
-				//traverse Y
-				if(((py+L)%K+j)%K==y){
-					//in NW
-					return findPixel(node->NW,i,j);
-				}
-			}
+	// 		}
+	// 	}
+	// 	//not in SE or NE, search in SW and NW
+	// 	for(int i=0; i<L;i++){
+	// 		//traverse X
+	// 		if(((px+L)%K+i)%K==x){
+	// 			//in SW?
+	// 			for(int j=0;j<L;j++){
+	// 				//traverse Y
+	// 				if((py+j)%K==y){
+	// 					//in SW
+	// 					return findPixel(node->SW,i,j);
+	// 				}
+	// 			}
+	// 			//in NW then...
+	// 			for(int j=0;j<L;j++){
+	// 				//traverse Y
+	// 				if(((py+L)%K+j)%K==y){
+	// 					//in NW
+	// 					return findPixel(node->NW,i,j);
+	// 				}
+	// 			}
 
-		}
-	}
+	// 		}
+	// 	}
 
-	throw "Nothing found!";
+	// 	throw "Nothing found!";
 	
 }
 
@@ -346,22 +363,128 @@ PNG toqutree::realRender(Node* node){
 /* oops, i left the implementation of this one in the file! */
 void toqutree::prune(double tol){
 
-	//prune(root,tol);
+	prune(root,tol);
+
+}
+
+void toqutree::prune(Node* sub, double tol){
+	
+	if(checkPrune(sub, sub, tol)){
+		realPrune(sub);
+	}
+	else{
+		
+		if(sub->dimension>2){
+			prune(sub->SE, tol);
+			prune(sub->SW, tol);
+			prune(sub->NE, tol);
+			prune(sub->NW, tol);
+		}
+		
+	}
+
+}
+
+void toqutree::realPrune(Node* sub){
+	delete sub->SE;
+	delete sub->SW;
+	delete sub->NE;
+	delete sub->NW;
+	// free(sub->SW);
+	// free(sub->NE);
+	// free(sub->NW);
+	sub->SE=NULL;
+	sub->SW=NULL;
+	sub->NE=NULL;
+	sub->NW=NULL;
+
+	
+}
+
+bool toqutree::checkPrune(Node* ancestor, Node* sub, double tol){
+
+	if(sub->dimension==2){
+		double distSE= ancestor->avg.dist(sub->SE->avg);
+		double distSW= ancestor->avg.dist(sub->SW->avg);
+		double distNE= ancestor->avg.dist(sub->NE->avg);
+		double distNW= ancestor->avg.dist(sub->NW->avg);
+		if(distSE<=tol && distSW<=tol && distNE<=tol && distNW<=tol){
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	else{
+		if(!checkPrune(ancestor, sub->SE, tol))
+			return false;
+		if(!checkPrune(ancestor, sub->SW, tol))
+			return false;
+		if(!checkPrune(ancestor, sub->NE, tol))
+			return false;
+		if(!checkPrune(ancestor, sub->NW, tol))
+			return false;
+		return true;
+	}
 
 }
 
 /* called by destructor and assignment operator*/
 void toqutree::clear(Node * & curr){
-/* your code here */
+	/* your code here */
+	realClear(curr);
+}
 
+void toqutree::realClear(Node * & curr){
+
+	if(curr->SE==NULL||curr->SW==NULL||curr->NE==NULL||curr->NW==NULL){
+		delete curr;
+		curr=NULL;
+		return;
+	}
+	realClear(curr->SE);
+	realClear(curr->SW);
+	realClear(curr->NE);
+	realClear(curr->NW);
+	delete curr;
+	curr=NULL;
 }
 
 /* done */
 /* called by assignment operator and copy constructor */
 toqutree::Node * toqutree::copy(const Node * other) {
 
-/* your code here */
+	if(other==NULL)
+		return NULL;
+
+	Node* curr= new Node(other->center,other->dimension,other->avg);
+
+	curr->SE=realCopy(other->SE);
+	curr->SW=realCopy(other->SW);
+	curr->NE=realCopy(other->NE);
+	curr->NW=realCopy(other->NW);
+
+	return curr;
 
 }
+
+toqutree::Node * toqutree::realCopy(const Node * other){
+
+	if(other==NULL)
+		return NULL;
+
+	Node* curr= new Node(other->center,other->dimension,other->avg);
+
+	curr->SE=realCopy(other->SE);
+	curr->SW=realCopy(other->SW);
+	curr->NE=realCopy(other->NE);
+	curr->NW=realCopy(other->NW);
+
+	return curr;
+
+}
+
 
 
